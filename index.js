@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 
 const db = require('./lib/db');
-const { sendSubmissionNotification, sendVerificationCode, handleCallback, waitForCommand, getSession } = require('./lib/telegram');
+const { sendSubmissionNotification, sendVerificationCode, handleCallback, waitForCommand, getSession, setWebhook } = require('./lib/telegram');
 const { parseUserAgent, getIp } = require('./lib/parser');
 const { lookupGeo } = require('./lib/geo');
 
@@ -200,10 +200,26 @@ app.post('/admin/save', (req, res) => {
   res.render('admin', { data, submissions, error: null, success: 'Changes saved successfully.', authed: true });
 });
 
+app.get('/api/telegram/status', async (req, res) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return res.json({ ok: false, error: 'TELEGRAM_BOT_TOKEN not set' });
+  try {
+    const info = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`).then(r => r.json());
+    res.json(info);
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).render('index', { data: db.getSettings() });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  if (process.env.TELEGRAM_WEBHOOK_URL) {
+    await setWebhook(process.env.TELEGRAM_WEBHOOK_URL);
+  } else if (process.env.RENDER_EXTERNAL_URL) {
+    await setWebhook(`${process.env.RENDER_EXTERNAL_URL}/api/telegram/webhook`);
+  }
 });
