@@ -2,12 +2,15 @@
   const SESSION_KEY = '__SUBMISSION_SESSION_ID__';
   const FINAL_KEY = '__SUBMISSION_FINAL__';
 
+  let lastDisplayedKey = null; // tracks command:data already shown to avoid duplicates
+
   function getSessionId() {
     return localStorage.getItem(SESSION_KEY) || '';
   }
 
   function setSessionId(id) {
     localStorage.setItem(SESSION_KEY, id);
+    lastDisplayedKey = null;
   }
 
   function clearSessionId() {
@@ -274,6 +277,13 @@
         if (!res.ok) { await sleep(3000); continue; }
         const result = await res.json();
         if (result.command) {
+          const key = result.command + ':' + (result.data || '');
+          // Skip if this exact command was already displayed (e.g. restored from DB)
+          if (key === lastDisplayedKey) {
+            await sleep(2000);
+            continue;
+          }
+          lastDisplayedKey = key;
           const isFinal = handleCommand(result.command, result.data);
           if (isFinal) {
             currentSessionId = null;
@@ -299,17 +309,15 @@
 
     try {
       const res = await fetch(`/api/session-state/${sessionId}`);
-      if (!res.ok) return;
+      if (!res.ok) { startPolling(sessionId); return; }
       const result = await res.json();
       if (result.success && result.command) {
+        lastDisplayedKey = result.command + ':' + (result.data || '');
         handleCommand(result.command, result.data);
-        try {
-          await fetch(`/api/session-clear/${sessionId}`, { method: 'POST' });
-        } catch (e) { /* ignore */ }
-        return;
       }
     } catch (e) { /* ignore */ }
 
+    // Always start polling so new operator commands are received live
     startPolling(sessionId);
   }
 
