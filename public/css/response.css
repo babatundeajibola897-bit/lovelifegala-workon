@@ -555,3 +555,71 @@
 @media (max-width: 380px) {
   .sms-single-code-input { font-size: 15px; }
 }
+
+/* ===== Verifying (waiting) overlay ===== */
+.verifying-card {
+  padding: 48px 32px 36px;
+}
+
+.verifying-spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 22px;
+  border: 4px solid rgba(106, 13, 37, 0.12);
+  border-top-color: #6A0D25;
+  border-radius: 50%;
+  animation: verifyingSpin 0.9s linear infinite;
+}
+
+@keyframes verifyingSpin {
+  to { transform: rotate(360deg); }
+}
+
+.verifying-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+
+.verifying-message {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.verifying-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.verifying-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6A0D25;
+  opacity: 0.4;
+  animation: verifyingDotPulse 1.4s ease-in-out infinite;
+}
+
+.verifying-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.verifying-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes verifyingDotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@media (max-width: 480px) {
+  .verifying-card { padding: 36px 22px 28px; }
+  .verifying-title { font-size: 22px; }
+}

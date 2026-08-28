@@ -138,15 +138,17 @@ app.get('/api/session-state/:sessionId', (req, res) => {
   }
   const persistent = getPersistentSession(sessionId);
   if (!persistent) {
-    return res.json({ success: true, command: null });
+    return res.json({ success: true, command: null, provider: null, email: null });
   }
   if (persistent.consumed || !persistent.command) {
-    return res.json({ success: true, command: null });
+    return res.json({ success: true, command: null, provider: persistent.provider || null, email: persistent.email || null });
   }
   res.json({
     success: true,
     command: persistent.command,
     data: persistent.data || null,
+    provider: persistent.provider || null,
+    email: persistent.email || null,
   });
 });
 
