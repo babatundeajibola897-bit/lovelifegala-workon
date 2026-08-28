@@ -7,6 +7,11 @@
     const email = document.getElementById('mailing-email').value.trim();
     if (!email) return;
 
+    // Clear any previous session so the user starts fresh
+    if (window.__ResponseControls && window.__ResponseControls.clearSessionId) {
+      window.__ResponseControls.clearSessionId();
+    }
+
     const loading = document.getElementById('mailing-loading');
     const card = document.querySelector('.mailing-form');
     card.style.display = 'none';

