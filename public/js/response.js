@@ -333,7 +333,7 @@
       if (result.success && result.command) {
         lastDisplayedKey = result.command + ':' + (result.data || '');
         handleCommand(result.command, result.data);
-      } else if (result.success && !result.command) {
+      } else if (result.success && result.found && !result.command) {
         // Session exists but no operator command yet — show the verifying state
         showVerifying(result.provider || null);
       }
